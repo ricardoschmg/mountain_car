@@ -57,7 +57,9 @@ class QLearningAgent:
         Tip: np.digitize(value, edges) returns the index of the bin a value
         falls into. Tip: the key must be hashable, so build a tuple of ints.
         """
-        raise NotImplementedError("EXERCISE 1a: implement discretize()")
+        indices = [int(np.digitize(val, edges)) for val, edges in zip(obs, self._bins)]
+        return tuple(indices)
+       # raise NotImplementedError("EXERCISE 1a: implement discretize()")
 
     def select_action(self, state: tuple, *, deterministic: bool = False) -> int:
         """EXERCISE 1b: epsilon-greedy action selection.
