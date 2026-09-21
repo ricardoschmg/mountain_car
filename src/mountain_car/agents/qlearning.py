@@ -74,11 +74,10 @@ class QLearningAgent:
         Tip: self.q_table is a defaultdict, so indexing an unseen state is safe
         and returns a zero vector. Tip: np.argmax gives you the best action.
         """
-        #raise NotImplementedError("EXERCISE 1b: implement select_action()")
-        if deterministic or self.rng.random() > self.epsilon:
+        if deterministic or np.random.random() > self.epsilon:
             return int(np.argmax(self.q_table[state]))
         else:
-            return int(self.rng.integers(0, self.n_actions))
+            return int(np.random.randint(0, self.n_actions))
 
     def predict(self, obs: np.ndarray, *, deterministic: bool = True) -> tuple[int, None]:
         return self.select_action(self.discretize(obs), deterministic=deterministic), None
@@ -106,7 +105,22 @@ class QLearningAgent:
         Note that `terminated` is NOT the same as "the episode ended" -- see
         the training loop below for why that distinction matters here.
         """
-        raise NotImplementedError("EXERCISE 1c: implement the Q-Learning update")
+        #raise NotImplementedError("EXERCISE 1c: implement the Q-Learning update")
+        # 1. Obtener el valor Q actual para la acción tomada en el estado actual
+        current_q = self.q_table[state][action]
+        
+        # 2. Calcular el valor Q máximo posible para el siguiente estado (s')
+        # Si el episodio terminó (done=True), el valor futuro es 0.0
+        max_next_q = 0.0 if terminated else np.max(self.q_table[next_state])
+        
+        # 3. Calcular el objetivo de TD (Temporal Difference target)
+        td_target = reward + self.gamma * max_next_q
+        
+        # 4. Actualizar la Q-table aplicando la tasa de aprendizaje (self.lr)
+        self.q_table[state][action] = current_q + self.lr * (td_target - current_q)
+
+
+    
 
     def train(self, total_episodes: int = 10_000, log_interval: int = 100) -> list[float]:
         env = gym.make(self.env_id)
