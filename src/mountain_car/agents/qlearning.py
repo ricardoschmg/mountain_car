@@ -74,7 +74,11 @@ class QLearningAgent:
         Tip: self.q_table is a defaultdict, so indexing an unseen state is safe
         and returns a zero vector. Tip: np.argmax gives you the best action.
         """
-        raise NotImplementedError("EXERCISE 1b: implement select_action()")
+        #raise NotImplementedError("EXERCISE 1b: implement select_action()")
+        if deterministic or self.rng.random() > self.epsilon:
+            return int(np.argmax(self.q_table[state]))
+        else:
+            return int(self.rng.integers(0, self.n_actions))
 
     def predict(self, obs: np.ndarray, *, deterministic: bool = True) -> tuple[int, None]:
         return self.select_action(self.discretize(obs), deterministic=deterministic), None
