@@ -1,5 +1,10 @@
 # Laboratorio Reinforcement Learning — Mountain Car
-**Presentado por:** *Gloria Leguizamón y Ricardo Sandoval*
+**Presentado por:** *Saud Mauricio Gonzales Rodriguez, 
+Luis Alfonso Fajardo Andrade, 
+Gloria Leguizamon Arboleda, 
+Ricardo Sandoval Ch, 
+Edwin Aviles Cogollo,
+Edgar Julian Mendez Ortegon*
 
 Este repositorio contiene la solución completa para los ejercicios de Aprendizaje por Refuerzo aplicados al entorno `MountainCar-v0` de Gymnasium, abarcando algoritmos tabulares (Q-Learning) y aproximadores de función con redes profundas (DQN).
 
