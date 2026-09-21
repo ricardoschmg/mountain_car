@@ -37,13 +37,20 @@ class QNetwork(nn.Module):
     Tip: forward() receives a batch of shape (B, state_dim) and must return
          shape (B, action_dim).
     """
-
-    def __init__(self, state_dim: int, action_dim: int, hidden: int = 128) -> None:
+    def __init__(self, state_dim: int, action_dim: int, hidden_dim: int = 64):
         super().__init__()
-        raise NotImplementedError("EXERCISE 2a: build the Q-network")
+        #raise NotImplementedError("EXERCISE 2a: build the Q-network")
+        self.net = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, action_dim),
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError("EXERCISE 2a: implement forward()")
+        #raise NotImplementedError("EXERCISE 2a: implement forward()")
+        return self.net(x)
 
 
 # ── Replay buffer ────────────────────────────────────────────────────
@@ -108,7 +115,9 @@ class DQNAgent:
         self.target_update_freq = target_update_freq
         self.hidden = hidden
         self.training_episodes = 0
-
+        self.repeat_steps = 15
+        self._current_repeat = 0
+        self._last_random_action = 0
         env = gym.make(env_id)
         self.state_dim = int(env.observation_space.shape[0])  # type: ignore[index]
         self.action_dim = int(env.action_space.n)  # type: ignore[attr-defined]
@@ -146,11 +155,38 @@ class DQNAgent:
         from gentle to nearly-the-answer -- take only as many as you need. Try
         to diagnose it from your own measurements first.
         """
-        if not deterministic and random.random() < self.epsilon:
-            return random.randrange(self.action_dim)
+        # En evaluacion / render SIEMPRE usa la red neuronal directamente
+        if deterministic:
+            with torch.no_grad():
+                t = torch.as_tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+                return int(self.q_net(t).argmax(dim=1).item())
+
+        # Exploración con repetición de acciones
+        # 1. En evaluacion / render / determinista: SIEMPRE usa la red neuronal
+        if deterministic:
+            with torch.no_grad():
+                t = torch.as_tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+                return int(self.q_net(t).argmax(dim=1).item())
+
+        # 2. Exploración con repetición de acciones (Inercia temporal)
+        if random.random() < self.epsilon:
+            if self._current_repeat <= 0:
+                self._last_random_action = random.randrange(self.action_dim)
+                self._current_repeat = self.repeat_steps
+            
+            self._current_repeat -= 1
+            return self._last_random_action
+
+        # 3. Explotación durante el entrenamiento
+        self._current_repeat = 0
         with torch.no_grad():
             t = torch.as_tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
             return int(self.q_net(t).argmax(dim=1).item())
+        #if not deterministic and random.random() < self.epsilon:
+        #    return random.randrange(self.action_dim)
+        #with torch.no_grad():
+        #    t = torch.as_tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+        #    return int(self.q_net(t).argmax(dim=1).item())
 
     def predict(self, obs: np.ndarray, *, deterministic: bool = True) -> tuple[int, None]:
         return self.select_action(obs, deterministic=deterministic), None
@@ -197,7 +233,24 @@ class DQNAgent:
         #      Tip: zero_grad() -> backward() -> step(), in that order.
         #
         # Return the scalar loss value (.item()).
-        raise NotImplementedError("EXERCISE 2b: implement the DQN learning step")
+        #raise NotImplementedError("EXERCISE 2b: implement the DQN learning step")
+        # 1. Q-values actuales con la red principal (q_net) para las acciones tomadas
+        current_q = self.q_net(states_t).gather(1, actions_t)
+
+        # 2. Q-value máximo para el siguiente estado usando la TARGET network (sin gradientes)
+        with torch.no_grad():
+            next_q = self.target_net(next_states_t).max(dim=1, keepdim=True).values
+
+        # 3. Objetivo Bellman: r + gamma * next_q * (1 - terminated)
+        target_q = rewards_t + self.gamma * next_q * (1.0 - terminateds_t.float())
+
+        # 4. Cálculo de pérdida y paso de gradiente
+        loss = self.loss_fn(current_q, target_q)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return loss.item()
 
     # ── training loop ─────────────────────────────────────────────────
 
